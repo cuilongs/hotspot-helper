@@ -4,13 +4,14 @@ import sys
 import gi
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, GLib
-from hotspot_common import ROOT, SOCKET, secret, state, stop, save_password, terminal_command, quick_enabled
+from hotspot_common import ROOT, SOCKET, secret, state, stop, save_password, save_ssid, terminal_command, quick_enabled
 
 
 class HotspotApp(Gtk.Application):
     def __init__(self):
         super().__init__(application_id='local.robotics.HotspotHelper')
         self.password_window = None
+        self.name_window = None
         self.start_pending = None
 
     def do_activate(self):
@@ -35,7 +36,13 @@ class HotspotApp(Gtk.Application):
         self.wifi = Gtk.Label(xalign=0, selectable=True)
         self.wifi.set_wrap(True)
         box.append(self.wifi)
-        box.append(Gtk.Label(label='热点名称：' + secret()['ssid'], xalign=0, selectable=True))
+        name_row = Gtk.Box(spacing=12)
+        self.name_label = Gtk.Label(label='热点名称：' + secret()['ssid'], xalign=0, selectable=True, hexpand=True)
+        name_row.append(self.name_label)
+        rename = Gtk.Button(label='修改名称')
+        rename.connect('clicked', self.change_name)
+        name_row.append(rename)
+        box.append(name_row)
         row = Gtk.Box(spacing=12)
         row.append(Gtk.Label(label='热点密码'))
         self.password = Gtk.PasswordEntry(show_peek_icon=True, hexpand=True)
@@ -82,6 +89,7 @@ class HotspotApp(Gtk.Application):
     def refresh(self):
         try:
             current = state()
+            self.name_label.set_text('热点名称：' + secret()['ssid'])
             self.status.set_text('◐ 检测到遗留热点，点击开启可恢复' if current.get('needs_recovery') else (('● 热点已在后台运行' if current.get('background') else '● 热点已开启（终端模式）') if current['active'] else '○ 热点未开启'))
             self.wifi.set_text('当前 Wi-Fi：' + current['upstream'] + ('\n本机热点地址：' + str(current['host_ip']) if current['active'] else ''))
             self.start_button.set_sensitive(self.start_pending is None and (not current['active'] or not current.get('background')))
@@ -178,6 +186,49 @@ class HotspotApp(Gtk.Application):
 
         window.connect('close-request', closed)
         save.connect('clicked', commit)
+        window.present()
+
+    def change_name(self, *_):
+        if state()['active'] or self.start_pending is not None:
+            self.message.set_text('请先关闭热点，再修改名称。保存后重新开启即可生效。')
+            return
+        if self.name_window:
+            self.name_window.present()
+            return
+        window = Gtk.Window(title='修改热点名称', transient_for=self.window, modal=True)
+        self.name_window = window
+        window.set_default_size(420, 200)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        for setter in ('set_margin_top', 'set_margin_bottom', 'set_margin_start', 'set_margin_end'):
+            getattr(box, setter)(20)
+        window.set_child(box)
+        box.append(Gtk.Label(label='新名称（支持中文，中文一般不超过 10 个字）', xalign=0))
+        entry = Gtk.Entry(text=secret()['ssid'])
+        entry.set_activates_default(True)
+        box.append(entry)
+        feedback = Gtk.Label(xalign=0)
+        feedback.set_wrap(True)
+        box.append(feedback)
+        save = Gtk.Button(label='保存名称')
+        save.add_css_class('suggested-action')
+        box.append(save)
+        window.set_default_widget(save)
+
+        def closed(*_):
+            self.name_window = None
+            return False
+
+        def commit(*_):
+            try:
+                save_ssid(entry.get_text())
+                self.name_label.set_text('热点名称：' + secret()['ssid'])
+                self.message.set_text('名称已保存。重新开启热点后，其他设备需选择新名称连接。')
+                window.close()
+            except Exception as error:
+                feedback.set_text(str(error))
+
+        save.connect('clicked', commit)
+        window.connect('close-request', closed)
         window.present()
 
 

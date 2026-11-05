@@ -98,6 +98,29 @@ def save_password(password, confirm):
         Path(name).unlink(missing_ok=True)
 
 
+def save_ssid(name):
+    name = name.strip()
+    if not name or len(name.encode('utf-8')) > 32 or any(char in name for char in '\r\n\0'):
+        raise ValueError('名称不能为空或包含换行，名称过长时请缩短（中文一般不超过 10 个字）。')
+    if Path('/sys/class/net/hotspotap0').exists():
+        raise ValueError('请先关闭热点，再修改名称。')
+    unit = 'hotspot-helper-' + str(os.getuid()) + '.service'
+    status = subprocess.run(['systemctl', 'is-active', unit], capture_output=True, text=True, timeout=3)
+    if status.stdout.strip() in ('active', 'activating', 'deactivating', 'reloading'):
+        raise ValueError('热点服务仍在启动或关闭，请待完全关闭后修改名称。')
+    data = secret()
+    data['ssid'] = name
+    fd, temporary = tempfile.mkstemp(prefix='.ssid_secret_', dir=CONFIG_DIR)
+    try:
+        with os.fdopen(fd, 'w') as stream:
+            json.dump(data, stream, ensure_ascii=False, indent=2)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, CONFIG_FILE)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+
+
 def state():
     data = {}
     try:

@@ -11,13 +11,13 @@ import shutil
 import platform
 import time
 import importlib.util
-from hotspot_common import ROOT, CONFIG_FILE, DATA_DIR, state, stop, save_password, secret, connected_wifi, quick_enabled, save_interface
+from hotspot_common import ROOT, CONFIG_FILE, DATA_DIR, state, stop, save_password, save_ssid, secret, connected_wifi, quick_enabled, save_interface
 
 
 def main():
     parser = argparse.ArgumentParser(description='热点：保持本机 Wi-Fi 联网，同时开启热点。')
-    parser.add_argument('--version', action='version', version='Hotspot Helper 0.4.0')
-    parser.add_argument('action', nargs='?', default='gui', choices=['gui', 'start', 'stop', 'status', 'password', 'plan', 'doctor', 'repair', 'enable-quick-start', 'disable-quick-start'])
+    parser.add_argument('--version', action='version', version='Hotspot Helper 0.4.1')
+    parser.add_argument('action', nargs='?', default='gui', choices=['gui', 'start', 'stop', 'status', 'password', 'rename', 'plan', 'doctor', 'repair', 'enable-quick-start', 'disable-quick-start'])
     parser.add_argument('--interface', default='auto', help='指定已连接的上游 Wi-Fi 网卡，默认自动识别')
     parser.add_argument('--hold', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
@@ -37,7 +37,7 @@ def main():
                 gtk = Gtk.get_major_version()
             except (ImportError, ValueError):
                 gtk = None
-            report = dict(version='0.4.0', system=platform.system(), machine=platform.machine(), tools=found, gtk=gtk, systemd_running=Path('/run/systemd/system').exists(), interfaces=connected_wifi(), config_path=str(CONFIG_FILE))
+            report = dict(version='0.4.1', system=platform.system(), machine=platform.machine(), tools=found, gtk=gtk, systemd_running=Path('/run/systemd/system').exists(), interfaces=connected_wifi(), config_path=str(CONFIG_FILE))
             print(json.dumps(report, ensure_ascii=False, indent=2))
             return 0 if all(found.values()) and gtk == 4 and Path('/run/systemd/system').exists() else 1
         if args.action == 'status':
@@ -85,6 +85,9 @@ def main():
             raise RuntimeError('后台启动超时，请查看热点状态或服务日志。')
         elif args.action in ('stop', 'repair'):
             print(stop())
+        elif args.action == 'rename':
+            save_ssid(input('新热点名称：'))
+            print('名称已保存，重新开启热点后生效。')
         else:
             if state()['active']:
                 raise ValueError('请先运行 hotspot-helper stop 关闭热点，再修改密码。')

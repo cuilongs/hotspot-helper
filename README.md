@@ -1,6 +1,6 @@
-# 热点助手 0.4.0
+# 热点助手 0.4.1
 
-安装包和完整迁移包位于 [`downloads/`](downloads/)，也可从 GitHub Releases 获取。
+安装包和迁移包位于 [`downloads/`](downloads/)，也可从 GitHub Releases 获取。
 
 中文 GTK4 桌面工具：让 Linux 电脑保持 Wi-Fi 联网，同时为其他设备提供热点。支持系统后台运行、一次性授权和异常退出恢复。源码与迁移包不包含原电脑的密码、网络配置或设备工程。
 
@@ -11,7 +11,7 @@
 下载 `.deb` 后，在它所在目录运行：
 
 ```bash
-sudo apt install ./hotspot-helper_0.4.0_all.deb
+sudo apt install ./hotspot-helper_0.4.1_all.deb
 hotspot-helper gui
 ```
 
@@ -53,6 +53,7 @@ hotspot-helper start
 hotspot-helper status
 hotspot-helper stop
 hotspot-helper password
+hotspot-helper rename
 hotspot-helper doctor
 hotspot-helper plan
 hotspot-helper repair
@@ -106,3 +107,7 @@ bash build_deb.sh
 ```
 
 本机已实测后台运行、异常退出恢复、一次性授权，以及不使用缓存密码的受限启动；此前完成双向 ping、SSH 文件传输与 HTTPS 访问。跨电脑完整启停仍需在目标电脑实测。
+
+## 0.4.1 名称修改
+
+面板热点名称旁新增“修改名称”按钮。先关闭热点，输入新名称并保存，再开启即可生效。支持中文，名称最多为 32 个 UTF-8 字节。名称与密码分开保存，修改名称不会改变已有密码或免重复认证授权。命令行入口为 `hotspot-helper rename`。

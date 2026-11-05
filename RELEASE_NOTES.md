@@ -1,12 +1,10 @@
-# 热点助手 0.4.0
+# 热点助手 0.4.1
 
-中文 GTK4 面板与命令行工具，支持系统后台运行、异常退出恢复，以及可撤销的一次性本机授权。首次授权只保存受限的程序启动规则，不保存管理员密码。
+新增“修改名称”按钮和 `hotspot-helper rename` 命令。先关闭热点，保存新名称，再开启即可；支持中文，原密码和一次性授权保留。
 
 ```bash
-sudo apt install ./hotspot-helper_0.4.0_all.deb
+sudo apt install ./hotspot-helper_0.4.1_all.deb
 hotspot-helper gui
-# 可选：在此电脑授权一次，之后启动不再重复认证
-hotspot-helper enable-quick-start
 ```
 
-依赖通过 APT 安装；无线网卡须支持 managed + AP 并发，目前采用 2.4 GHz 同信道方案。跨电脑完整启停仍需在目标电脑实测。
+升级程序需一次管理员认证；日常热点启停的免重复认证继续有效。含 `.deb`、完整迁移包与 SHA256 校验文件，后台运行和异常退出恢复功能保留。
