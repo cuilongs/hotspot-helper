@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*_secret.json
+.initial_secret_*
+.hotspot_secret_*
+qa_*/
+*.log
+.env
+.env.*
+hotspot-helper_*.deb
+!downloads/hotspot-helper_*.deb

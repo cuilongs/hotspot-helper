@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=热点助手
+Name[en]=Hotspot Helper
+Comment=保持 Wi-Fi 联网，同时管理 热点
+Exec=/usr/bin/hotspot-helper gui
+Icon=hotspot-helper
+Terminal=false
+Categories=Network;
+StartupNotify=true

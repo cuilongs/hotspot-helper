@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+# Stop only a running helper belonging to this installed package before removal.
+/usr/bin/python3 - <<'PY'
+from pathlib import Path
+import json,os,signal,time
+state=Path('/run/cls-hotspot-helper/state.json')
+if state.exists():
+    record=json.loads(state.read_text())
+    pid=record.get('pid')
+    if isinstance(pid,int) and pid>1:
+        process=Path('/proc',str(pid),'cmdline')
+        try: args=process.read_bytes().split(b'\0')
+        except OSError: args=[]
+        if b'/usr/lib/hotspot-helper/start_standard_ap.py' in args:
+            os.kill(pid,signal.SIGINT)
+            for _ in range(600):
+                if not process.exists():break
+                time.sleep(.1)
+            else:raise SystemExit('热点尚在关闭，请稍后重试卸载。')
+PY
+exit 0

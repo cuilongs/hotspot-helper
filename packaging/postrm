@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+case "${1:-}" in
+  remove|purge)
+    /usr/bin/python3 - <<'PY'
+from pathlib import Path
+marker='# Managed by Hotspot Helper; only this application start command.\n'
+for path in Path('/etc/sudoers.d').glob('hotspot-helper-[0-9]*'):
+    if path.is_file() and not path.is_symlink() and path.read_text().startswith(marker):
+        uid=path.name.removeprefix('hotspot-helper-')
+        if uid.isdecimal():
+            path.unlink()
+            Path('/etc/hotspot-helper/users',uid+'.json').unlink(missing_ok=True)
+PY
+    ;;
+esac
+exit 0

@@ -1,0 +1,6 @@
+#!/usr/bin/python3
+"""System-installed entry point; application files are owned by root."""
+import sys
+sys.path.insert(0, '/usr/lib/hotspot-helper')
+from hotspot_cli import main
+sys.exit(main())
