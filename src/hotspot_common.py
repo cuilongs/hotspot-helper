@@ -8,6 +8,7 @@ import tempfile
 import secrets
 import shutil
 import stat
+from connected_devices import clients
 
 ROOT = Path(__file__).resolve().parent
 CONFIG_DIR = Path(os.environ.get('HOTSPOT_HELPER_CONFIG_DIR', str(Path(os.environ.get('XDG_CONFIG_HOME', str(Path.home() / '.config'))) / 'hotspot-helper')))
@@ -143,19 +144,14 @@ def state():
     needs_recovery = interface_exists and not valid and Path('/run/NetworkManager/conf.d/90-cls-hotspot-helper-ap.conf').exists()
     active = interface_exists and valid and data.get('owner_uid') == os.getuid()
     devices = []
+    devices_error = None
     if active:
-        try:
-            for line in Path('/run/cls-hotspot-helper/dhcp/leases').read_text().splitlines():
-                parts = line.split()
-                if len(parts) >= 4:
-                    devices.append(dict(ip=parts[2], name=parts[3]))
-        except OSError:
-            pass
+        devices, devices_error = clients()
     try:
         wifi = subprocess.run(['nmcli', '-g', 'GENERAL.CONNECTION', 'device', 'show', select_interface(secret().get('interface', 'auto'))], capture_output=True, text=True, timeout=2).stdout.strip()
     except (OSError, RuntimeError, subprocess.TimeoutExpired):
         wifi = '读取中'
-    return dict(active=active, background=background, needs_recovery=needs_recovery, pid=pid if valid else None, ssid=secret()['ssid'], upstream=data.get('upstream_ssid', wifi) if active else wifi, host_ip=data.get('host_ip') if active else None, devices=devices, last_error=data.get('error') if data.get('status') == 'FAILED' else None)
+    return dict(active=active, background=background, needs_recovery=needs_recovery, pid=pid if valid else None, ssid=secret()['ssid'], upstream=data.get('upstream_ssid', wifi) if active else wifi, host_ip=data.get('host_ip') if active else None, devices=devices, connected_count=len(devices) if devices_error is None else None, devices_error=devices_error, last_error=data.get('error') if data.get('status') == 'FAILED' else None)
 
 
 def stop():

@@ -19,15 +19,18 @@ class HotspotApp(Gtk.Application):
             self.get_active_window().present()
             return
         self.window = Gtk.ApplicationWindow(application=self, title='热点助手')
-        self.window.set_default_size(560, 490)
+        self.window.set_default_size(580, 740)
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
         for setter in ('set_margin_top', 'set_margin_bottom', 'set_margin_start', 'set_margin_end'):
             getattr(box, setter)(24)
-        self.window.set_child(box)
+        main_scroll = Gtk.ScrolledWindow()
+        main_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        main_scroll.set_child(box)
+        self.window.set_child(main_scroll)
         title = Gtk.Label(label='热点助手', xalign=0)
         title.add_css_class('title-1')
         box.append(title)
-        description = Gtk.Label(label='本机继续使用 Wi-Fi，同时为 客户端设备 提供连接。', xalign=0)
+        description = Gtk.Label(label='本机继续使用 Wi-Fi，同时为其他设备提供热点。', xalign=0)
         description.set_wrap(True)
         box.append(description)
         self.status = Gtk.Label(xalign=0)
@@ -65,9 +68,18 @@ class HotspotApp(Gtk.Application):
         self.quick_button = Gtk.Button(label='一次性授权：以后开启不再输密码')
         self.quick_button.connect('clicked', self.configure_quick)
         box.append(self.quick_button)
-        self.devices = Gtk.Label(xalign=0, selectable=True)
-        self.devices.set_wrap(True)
-        box.append(self.devices)
+        self.devices_title = Gtk.Label(label='当前已连接设备', xalign=0)
+        self.devices_title.add_css_class('heading')
+        box.append(self.devices_title)
+        self.devices_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        self.devices_list.add_css_class('boxed-list')
+        devices_scroll = Gtk.ScrolledWindow()
+        devices_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        devices_scroll.set_min_content_height(52)
+        devices_scroll.set_max_content_height(180)
+        devices_scroll.set_propagate_natural_height(True)
+        devices_scroll.set_child(self.devices_list)
+        box.append(devices_scroll)
         self.message = Gtk.Label(xalign=0)
         self.message.set_wrap(True)
         box.append(self.message)
@@ -96,12 +108,48 @@ class HotspotApp(Gtk.Application):
             self.quick_button.set_label('已启用免重复认证（点击可撤销）' if quick_enabled() else '一次性授权：以后开启不再输密码')
             self.start_button.set_label('转为后台运行' if current['active'] and not current.get('background') else '开启热点')
             self.stop_button.set_sensitive(current['active'] or current.get('needs_recovery', False))
-            self.devices.set_text('设备地址记录：' + ('；'.join(d['name'] + '  ' + d['ip'] for d in current['devices']) if current['devices'] else '暂无地址分配记录'))
+            self.show_devices(current)
             if current['last_error'] and not current['active']:
                 self.message.set_text(current['last_error'])
         except Exception as error:
             self.message.set_text(str(error))
         return True
+
+    def show_devices(self, current):
+        child = self.devices_list.get_first_child()
+        while child:
+            following = child.get_next_sibling()
+            self.devices_list.remove(child)
+            child = following
+        count = current.get('connected_count')
+        self.devices_title.set_text('当前已连接设备' + (' · ' + str(count) + ' 台' if count is not None else ''))
+        if not current['active'] or current.get('devices_error') or not current['devices']:
+            text = '热点尚未开启' if not current['active'] else (current.get('devices_error') or '暂无设备连接')
+            label = Gtk.Label(label=text, xalign=0)
+            label.set_margin_top(12)
+            label.set_margin_bottom(12)
+            label.set_margin_start(12)
+            self.devices_list.append(label)
+            return
+        for device in current['devices']:
+            row = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+            for setter in ('set_margin_top', 'set_margin_bottom', 'set_margin_start', 'set_margin_end'):
+                getattr(row, setter)(12)
+            top = Gtk.Box(spacing=12)
+            name = Gtk.Label(label=device['name'], xalign=0, hexpand=True, selectable=True)
+            name.add_css_class('heading')
+            name.set_wrap(True)
+            top.append(name)
+            top.append(Gtk.Label(label=device['ip'], selectable=True))
+            row.append(top)
+            detail = 'MAC：' + device['mac']
+            if device.get('signal_dbm') is not None:
+                detail += '    信号：' + str(device['signal_dbm']) + ' dBm'
+            label = Gtk.Label(label=detail, xalign=0, selectable=True)
+            label.add_css_class('dim-label')
+            label.set_wrap(True)
+            row.append(label)
+            self.devices_list.append(row)
 
     def start_hotspot(self, *_):
         try:
