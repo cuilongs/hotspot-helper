@@ -5,6 +5,7 @@ import gi
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, GLib
 from hotspot_common import ROOT, SOCKET, secret, state, stop, save_password, save_ssid, terminal_command, quick_enabled
+import ssh_commands
 
 
 class HotspotApp(Gtk.Application):
@@ -12,6 +13,7 @@ class HotspotApp(Gtk.Application):
         super().__init__(application_id='local.robotics.HotspotHelper')
         self.password_window = None
         self.name_window = None
+        self.ssh_window = None
         self.start_pending = None
 
     def do_activate(self):
@@ -19,7 +21,7 @@ class HotspotApp(Gtk.Application):
             self.get_active_window().present()
             return
         self.window = Gtk.ApplicationWindow(application=self, title='热点助手')
-        self.window.set_default_size(580, 740)
+        self.window.set_default_size(580, 800)
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
         for setter in ('set_margin_top', 'set_margin_bottom', 'set_margin_start', 'set_margin_end'):
             getattr(box, setter)(24)
@@ -75,7 +77,7 @@ class HotspotApp(Gtk.Application):
         self.devices_list.add_css_class('boxed-list')
         devices_scroll = Gtk.ScrolledWindow()
         devices_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        devices_scroll.set_min_content_height(52)
+        devices_scroll.set_min_content_height(130)
         devices_scroll.set_max_content_height(180)
         devices_scroll.set_propagate_natural_height(True)
         devices_scroll.set_child(self.devices_list)
@@ -149,7 +151,77 @@ class HotspotApp(Gtk.Application):
             label.add_css_class('dim-label')
             label.set_wrap(True)
             row.append(label)
+            actions = Gtk.Box(spacing=10)
+            user = ssh_commands.username(device['mac'])
+            account = Gtk.Label(label='SSH 用户：' + (user or '尚未设置'), xalign=0, hexpand=True)
+            account.set_wrap(True)
+            actions.append(account)
+            edit = Gtk.Button(label='修改用户' if user else '设置用户')
+            edit.connect('clicked', lambda button, target=dict(device): self.change_ssh_user(target))
+            actions.append(edit)
+            copy = Gtk.Button(label='复制 SSH')
+            copy.connect('clicked', lambda button, target=dict(device): self.copy_ssh(target))
+            actions.append(copy)
+            row.append(actions)
             self.devices_list.append(row)
+
+    def copy_ssh(self, device):
+        try:
+            if not ssh_commands.username(device['mac']):
+                self.change_ssh_user(device)
+                return
+            current = state()
+            live = next((item for item in current['devices'] if item['mac'] == device['mac']), None)
+            if live is None:
+                raise ValueError('该设备当前未连接，请连接后再复制命令。')
+            command = ssh_commands.command(live)
+            self.window.get_clipboard().set(command)
+            self.message.set_text('已复制：' + command + '\n粘贴到终端即可使用。')
+        except Exception as error:
+            self.message.set_text(str(error))
+
+    def change_ssh_user(self, device):
+        if self.ssh_window:
+            self.ssh_window.present()
+            return
+        window = Gtk.Window(title='设备 SSH 用户', transient_for=self.window, modal=True)
+        self.ssh_window = window
+        window.set_default_size(440, 220)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        for setter in ('set_margin_top', 'set_margin_bottom', 'set_margin_start', 'set_margin_end'):
+            getattr(box, setter)(20)
+        window.set_child(box)
+        label = Gtk.Label(label='设备：' + device['name'] + '\n填写这台设备的 SSH 登录用户名。', xalign=0)
+        label.set_wrap(True)
+        box.append(label)
+        entry = Gtk.Entry(text=ssh_commands.username(device['mac']))
+        entry.set_placeholder_text('例如 nvidia')
+        entry.set_activates_default(True)
+        box.append(entry)
+        feedback = Gtk.Label(xalign=0)
+        feedback.set_wrap(True)
+        box.append(feedback)
+        save = Gtk.Button(label='保存并复制 SSH 命令')
+        save.add_css_class('suggested-action')
+        box.append(save)
+        window.set_default_widget(save)
+
+        def closed(*_):
+            self.ssh_window = None
+            return False
+
+        def commit(*_):
+            try:
+                ssh_commands.save_username(device['mac'], entry.get_text())
+                window.close()
+                self.refresh()
+                self.copy_ssh(device)
+            except Exception as error:
+                feedback.set_text(str(error))
+
+        window.connect('close-request', closed)
+        save.connect('clicked', commit)
+        window.present()
 
     def start_hotspot(self, *_):
         try:

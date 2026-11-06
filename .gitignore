@@ -9,3 +9,5 @@ qa_*/
 .env.*
 hotspot-helper_*.deb
 !downloads/hotspot-helper_*.deb
+device_users.json
+.device_users_*
