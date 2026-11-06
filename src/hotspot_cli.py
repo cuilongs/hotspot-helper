@@ -16,7 +16,7 @@ from hotspot_common import ROOT, CONFIG_FILE, DATA_DIR, state, stop, save_passwo
 
 def main():
     parser = argparse.ArgumentParser(description='热点：保持本机 Wi-Fi 联网，同时开启热点。')
-    parser.add_argument('--version', action='version', version='Hotspot Helper 0.4.3')
+    parser.add_argument('--version', action='version', version='Hotspot Helper 0.4.2')
     parser.add_argument('action', nargs='?', default='gui', choices=['gui', 'start', 'stop', 'status', 'password', 'rename', 'plan', 'doctor', 'repair', 'enable-quick-start', 'disable-quick-start'])
     parser.add_argument('--interface', default='auto', help='指定已连接的上游 Wi-Fi 网卡，默认自动识别')
     parser.add_argument('--hold', action='store_true', help=argparse.SUPPRESS)
@@ -37,7 +37,7 @@ def main():
                 gtk = Gtk.get_major_version()
             except (ImportError, ValueError):
                 gtk = None
-            report = dict(version='0.4.3', system=platform.system(), machine=platform.machine(), tools=found, gtk=gtk, systemd_running=Path('/run/systemd/system').exists(), interfaces=connected_wifi(), config_path=str(CONFIG_FILE))
+            report = dict(version='0.4.2', system=platform.system(), machine=platform.machine(), tools=found, gtk=gtk, systemd_running=Path('/run/systemd/system').exists(), interfaces=connected_wifi(), config_path=str(CONFIG_FILE))
             print(json.dumps(report, ensure_ascii=False, indent=2))
             return 0 if all(found.values()) and gtk == 4 and Path('/run/systemd/system').exists() else 1
         if args.action == 'status':

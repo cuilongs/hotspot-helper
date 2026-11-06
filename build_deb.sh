@@ -17,7 +17,7 @@ install -m 755 "$package_dir/packaging/prerm" "$package_root/DEBIAN/prerm"
 installed_size=$(du -sk "$package_root/usr" | cut -f1)
 cat > "$package_root/DEBIAN/control" <<EOF
 Package: hotspot-helper
-Version: 0.4.3
+Version: 0.4.2
 Section: net
 Priority: optional
 Architecture: all
@@ -34,4 +34,4 @@ EOF
 export SOURCE_DATE_EPOCH=1793836800
 chmod -R go-w "$package_root"
 chmod 755 "$package_root"
-dpkg-deb --root-owner-group --build "$package_root" "$package_dir/hotspot-helper_0.4.3_all.deb"
+dpkg-deb --root-owner-group --build "$package_root" "$package_dir/hotspot-helper_0.4.2_all.deb"
